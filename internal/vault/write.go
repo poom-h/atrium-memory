@@ -124,7 +124,7 @@ func (v *Vault) Edit(id, oldText, newText, version string) (Saved, error) {
 			return errorf(NoMatch, "old_text is empty")
 		}
 		s := string(old)
-		find, replace, n := locateEdit(s, oldText, newText)
+		find, replace, n := locateEdit(s, oldText, newText, dominantEOL(old))
 		switch {
 		case n == 0:
 			return errorf(NoMatch, "old_text does not appear in %q; read the note again and copy the passage exactly", t.ID)
@@ -201,8 +201,9 @@ func modeOf(abs string) fs.FileMode {
 func toLF(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
 
 // locateEdit finds oldText in the raw note text in three forms: as given, in LF form and in CRLF form.
+// A match with no line break gets newText in the note's dominant style; a raw match with line breaks keeps newText as given.
 // It returns the one form that matched, newText in the same line-ending style, and the total match count.
-func locateEdit(note, oldText, newText string) (find, replace string, n int) {
+func locateEdit(note, oldText, newText, noteEOL string) (find, replace string, n int) {
 	forms := []struct{ find, replace string }{
 		{oldText, newText},
 		{withEOL(oldText, "\n"), withEOL(newText, "\n")},
@@ -215,6 +216,9 @@ func locateEdit(note, oldText, newText string) (find, replace string, n int) {
 		if m := countAll(note, f.find); m > 0 {
 			if n == 0 {
 				find, replace = f.find, f.replace
+				if !strings.Contains(find, "\n") {
+					replace = withEOL(newText, noteEOL)
+				}
 			}
 			n += m
 		}

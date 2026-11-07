@@ -148,3 +148,20 @@ func TestEditCRLFOldTextMatchesLFNote(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
+
+func TestEditSingleLineOldTextKeepsNoteStyleInReplacement(t *testing.T) {
+	for _, c := range []struct{ name, note, newText, want string }{
+		{"crlf", "a\r\nb\r\nc\r\n", "x\ny", "a\r\nx\r\ny\r\nc\r\n"},
+		{"lf", "a\nb\nc\n", "x\r\ny", "a\nx\ny\nc\n"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			v := newVault(t, map[string]string{"N.md": c.note})
+			if _, err := v.Edit("N.md", "b", c.newText, versionOf([]byte(c.note))); err != nil {
+				t.Fatal(err)
+			}
+			if got := readFile(t, v, "N.md"); got != c.want {
+				t.Fatalf("got %q, want %q", got, c.want)
+			}
+		})
+	}
+}
