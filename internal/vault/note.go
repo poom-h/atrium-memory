@@ -36,12 +36,16 @@ func (v *Vault) Read(id string) (Note, error) {
 		return Note{}, err
 	}
 	text := string(data)
+	entries, err := v.notes()
+	if err != nil {
+		return Note{}, err
+	}
 	return Note{
 		ID:          t.ID,
 		Title:       titleOf(t.ID),
 		Content:     text,
 		Frontmatter: parseFrontmatter(text),
-		Links:       []string{},
+		Links:       newLinkIndex(entries).outgoing(text),
 		Version:     versionOf(data),
 	}, nil
 }
