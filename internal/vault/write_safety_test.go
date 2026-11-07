@@ -137,3 +137,14 @@ func TestStaleVersionLeavesFileUnchanged(t *testing.T) {
 		t.Fatalf("file changed: %q", got)
 	}
 }
+
+func TestEditCRLFOldTextMatchesLFNote(t *testing.T) {
+	start := "a\nb\nc\n"
+	v := newVault(t, map[string]string{"L.md": start})
+	if _, err := v.Edit("L.md", "a\r\nb", "x\r\ny", versionOf([]byte(start))); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := readFile(t, v, "L.md"), "x\ny\nc\n"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}

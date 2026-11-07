@@ -200,18 +200,23 @@ func modeOf(abs string) fs.FileMode {
 
 func toLF(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
 
-// locateEdit finds oldText in the raw note text, as given and, when it spans lines, in CRLF form.
-// It returns the form that matched, newText in the same line-ending style, and the total match count.
+// locateEdit finds oldText in the raw note text in three forms: as given, in LF form and in CRLF form.
+// It returns the one form that matched, newText in the same line-ending style, and the total match count.
 func locateEdit(note, oldText, newText string) (find, replace string, n int) {
-	find, replace, n = oldText, newText, countAll(note, oldText)
-	if strings.Contains(oldText, "\n") {
-		if crlf := withEOL(oldText, "\r\n"); crlf != oldText {
-			if m := countAll(note, crlf); m > 0 {
-				if n == 0 {
-					find, replace = crlf, withEOL(newText, "\r\n")
-				}
-				n += m
+	forms := []struct{ find, replace string }{
+		{oldText, newText},
+		{withEOL(oldText, "\n"), withEOL(newText, "\n")},
+		{withEOL(oldText, "\r\n"), withEOL(newText, "\r\n")},
+	}
+	for i, f := range forms {
+		if i > 0 && (f.find == forms[0].find || (i == 2 && f.find == forms[1].find)) {
+			continue
+		}
+		if m := countAll(note, f.find); m > 0 {
+			if n == 0 {
+				find, replace = f.find, f.replace
 			}
+			n += m
 		}
 	}
 	return find, replace, n
