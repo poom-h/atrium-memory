@@ -14,7 +14,8 @@ import (
 	"github.com/poom-h/brainvault/internal/lock"
 )
 
-const lockWait = 5 * time.Second
+// lockWait is how long a write waits for the vault lock; tests shorten it.
+var lockWait = 5 * time.Second
 
 // Saved is the result of a change: the note's ID as stored and its new version.
 type Saved struct {
@@ -51,7 +52,7 @@ func (v *Vault) Write(id, content, version string) (Saved, error) {
 		if version != current {
 			return stale(t.ID, current)
 		}
-		saved, err = writeAtomic(t, []byte(restoreEOL(toLF(content), old)), modeOf(t.Abs))
+		saved, err = writeAtomic(t, []byte(withEOL(content, dominantEOL(old))), modeOf(t.Abs))
 		return err
 	})
 	return saved, err
@@ -82,12 +83,13 @@ func (v *Vault) Append(id, text, version string) (Saved, error) {
 		if current := versionOf(old); version != "" && version != current {
 			return stale(t.ID, current)
 		}
-		s := toLF(string(old))
-		if s != "" && !strings.HasSuffix(s, "\n") {
-			s += "\n"
+		eol := dominantEOL(old)
+		out := old
+		if len(out) > 0 && out[len(out)-1] != '\n' {
+			out = append(out[:len(out):len(out)], eol...)
 		}
-		s += ensureNewline(toLF(text))
-		saved, err = writeAtomic(t, []byte(restoreEOL(s, old)), modeOf(t.Abs))
+		out = append(out, withEOL(ensureNewline(toLF(text)), eol)...)
+		saved, err = writeAtomic(t, out, modeOf(t.Abs))
 		return err
 	})
 	return saved, err
@@ -118,18 +120,19 @@ func (v *Vault) Edit(id, oldText, newText, version string) (Saved, error) {
 		if version != current {
 			return stale(t.ID, current)
 		}
-		s, find := toLF(string(old)), toLF(oldText)
-		if find == "" {
+		if oldText == "" {
 			return errorf(NoMatch, "old_text is empty")
 		}
-		switch n := strings.Count(s, find); {
+		s := string(old)
+		find, replace, n := locateEdit(s, oldText, newText)
+		switch {
 		case n == 0:
 			return errorf(NoMatch, "old_text does not appear in %q; read the note again and copy the passage exactly", t.ID)
 		case n > 1:
 			return errorf(AmbiguousMatch, "old_text appears %d times in %q; include more surrounding text so it appears once", n, t.ID)
 		}
-		s = strings.Replace(s, find, toLF(newText), 1)
-		saved, err = writeAtomic(t, []byte(restoreEOL(s, old)), modeOf(t.Abs))
+		s = strings.Replace(s, find, replace, 1)
+		saved, err = writeAtomic(t, []byte(s), modeOf(t.Abs))
 		return err
 	})
 	return saved, err
@@ -197,12 +200,52 @@ func modeOf(abs string) fs.FileMode {
 
 func toLF(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
 
-// restoreEOL gives LF text the line endings of the original file.
-func restoreEOL(lf string, original []byte) string {
-	if bytes.Contains(original, []byte("\r\n")) {
-		return strings.ReplaceAll(lf, "\n", "\r\n")
+// locateEdit finds oldText in the raw note text, as given and, when it spans lines, in CRLF form.
+// It returns the form that matched, newText in the same line-ending style, and the total match count.
+func locateEdit(note, oldText, newText string) (find, replace string, n int) {
+	find, replace, n = oldText, newText, countAll(note, oldText)
+	if strings.Contains(oldText, "\n") {
+		if crlf := withEOL(oldText, "\r\n"); crlf != oldText {
+			if m := countAll(note, crlf); m > 0 {
+				if n == 0 {
+					find, replace = crlf, withEOL(newText, "\r\n")
+				}
+				n += m
+			}
+		}
 	}
-	return lf
+	return find, replace, n
+}
+
+// countAll counts every occurrence of sub in s, overlapping ones included.
+func countAll(s, sub string) int {
+	n := 0
+	for i := 0; ; {
+		j := strings.Index(s[i:], sub)
+		if j < 0 {
+			return n
+		}
+		n++
+		i += j + 1
+	}
+}
+
+// dominantEOL is "\r\n" when the text has more CRLF than bare LF line breaks, otherwise "\n".
+func dominantEOL(b []byte) string {
+	crlf := bytes.Count(b, []byte("\r\n"))
+	if crlf > bytes.Count(b, []byte("\n"))-crlf {
+		return "\r\n"
+	}
+	return "\n"
+}
+
+// withEOL rewrites every line break in s to eol.
+func withEOL(s, eol string) string {
+	s = toLF(s)
+	if eol == "\n" {
+		return s
+	}
+	return strings.ReplaceAll(s, "\n", eol)
 }
 
 func ensureNewline(s string) string {
