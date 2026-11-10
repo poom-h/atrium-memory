@@ -1,6 +1,22 @@
 # brainvault
 
-The Memory Vault as a tool. `brainvault` serves a folder of Markdown notes (an Obsidian-style vault) to AI agents as MCP tools, and offers the same operations on the command line. It runs on macOS, Windows and Linux as a single binary.
+The Memory Vault as a tool. `brainvault` serves a folder of Markdown notes (an Obsidian-style vault) to AI agents as MCP tools, and has a command line over the same core: `search`, `read`, `list`, `backlinks`, `write` and `doctor`. It runs on macOS, Windows and Linux as a single binary.
+
+## Install
+
+Download the archive for your OS from the GitHub Releases page, unpack it, and put `brainvault` on your PATH.
+
+Until releases are notarised, macOS may block a downloaded binary. Clear the quarantine flag once:
+
+```sh
+xattr -d com.apple.quarantine brainvault
+```
+
+Or, with Go installed:
+
+```sh
+go install github.com/poom-h/brainvault/cmd/brainvault@latest
+```
 
 ## Tools
 
@@ -46,6 +62,13 @@ brainvault doctor --vault ~/Vault
 ```
 
 Run `brainvault help` for every command.
+
+## Limits
+
+- The write lock and atomic appends assume a local file system. They are not safe on NFS, or on a vault that iCloud or Dropbox sync shares between machines.
+- The audit log grows without rotation.
+- Calls rejected by input validation, before they reach a tool, are not logged.
+- Note names containing `:` can't be addressed.
 
 ## Build
 
