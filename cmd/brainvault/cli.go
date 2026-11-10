@@ -18,8 +18,7 @@ type cli struct {
 }
 
 func (c cli) record(tool string, e audit.Entry, err error) {
-	e.Actor, e.Tool, e.Outcome = c.actor, tool, vault.OutcomeOf(err)
-	_ = c.log.Record(e) // a CLI call still succeeds if the log can't be written
+	_ = c.log.Call(c.actor, tool, e, vault.OutcomeOf(err)) // a CLI call still succeeds if the log can't be written
 }
 
 func (c cli) print(v any) error {
@@ -37,11 +36,7 @@ func oneID(args []string) (string, error) {
 
 func (c cli) search(query, folder string, limit int) error {
 	matches, err := c.vault.Search(query, folder, limit)
-	ids := make([]string, 0, len(matches))
-	for _, m := range matches {
-		ids = append(ids, m.ID)
-	}
-	c.record("vault_search", audit.Entry{Query: query, Folder: folder, Results: ids}, err)
+	c.record(audit.ToolSearch, audit.Entry{Query: query, Folder: folder, Results: vault.MatchIDs(matches)}, err)
 	if err != nil {
 		return err
 	}
@@ -54,7 +49,7 @@ func (c cli) read(args []string) error {
 		return err
 	}
 	note, err := c.vault.Read(id)
-	c.record("vault_read", audit.Entry{ID: id}, err)
+	c.record(audit.ToolRead, audit.Entry{ID: note.IDOr(id)}, err)
 	if err != nil {
 		return err
 	}
@@ -63,7 +58,7 @@ func (c cli) read(args []string) error {
 
 func (c cli) list(folder string, recursive bool) error {
 	notes, err := c.vault.List(folder, recursive)
-	c.record("vault_list", audit.Entry{Folder: folder}, err)
+	c.record(audit.ToolList, audit.Entry{Folder: folder}, err)
 	if err != nil {
 		return err
 	}
@@ -76,7 +71,7 @@ func (c cli) backlinks(args []string) error {
 		return err
 	}
 	ids, err := c.vault.Backlinks(id)
-	c.record("vault_backlinks", audit.Entry{ID: id}, err)
+	c.record(audit.ToolBacklinks, audit.Entry{ID: id}, err)
 	if err != nil {
 		return err
 	}
@@ -93,7 +88,7 @@ func (c cli) write(args []string, version string, in io.Reader) error {
 		return err
 	}
 	saved, err := c.vault.Write(id, string(content), version)
-	c.record("vault_write", audit.Entry{ID: id}, err)
+	c.record(audit.ToolWrite, audit.Entry{ID: saved.IDOr(id)}, err)
 	if err != nil {
 		return err
 	}

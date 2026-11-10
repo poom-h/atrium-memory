@@ -93,3 +93,24 @@ func TestList(t *testing.T) {
 	_, err = v.List("../x", true)
 	wantCode(t, err, OutsideVault)
 }
+
+func TestAuditIDHelpers(t *testing.T) {
+	if got := MatchIDs([]Match{{ID: "A.md"}, {ID: "B.md"}}); len(got) != 2 || got[0] != "A.md" || got[1] != "B.md" {
+		t.Fatalf("MatchIDs = %v", got)
+	}
+	if got := MatchIDs(nil); got == nil || len(got) != 0 {
+		t.Fatalf("MatchIDs(nil) = %#v, want an empty slice", got)
+	}
+	if got := (Saved{ID: "Stored.md"}).IDOr("asked.md"); got != "Stored.md" {
+		t.Fatalf("Saved.IDOr = %q", got)
+	}
+	if got := (Saved{}).IDOr("asked.md"); got != "asked.md" {
+		t.Fatalf("empty Saved.IDOr = %q", got)
+	}
+	if got := (Note{ID: "Real.md"}).IDOr("asked.md"); got != "Real.md" {
+		t.Fatalf("Note.IDOr = %q", got)
+	}
+	if got := (Note{}).IDOr("asked.md"); got != "asked.md" {
+		t.Fatalf("empty Note.IDOr = %q", got)
+	}
+}

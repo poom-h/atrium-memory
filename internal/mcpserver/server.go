@@ -68,38 +68,25 @@ type server struct {
 func New(v *vault.Vault, log *audit.Log, actor, version string) *mcp.Server {
 	s := &server{vault: v, log: log, actor: actor}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "brainvault", Version: version}, nil)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_search", Description: "Search the Memory Vault. Every word must appear in a note's title, path or text; title matches rank first. Returns note IDs, titles and snippets."}, s.search)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_read", Description: "Read one note: its Markdown, parsed properties, the notes it links to, and its version. Pass the version back when you change the note."}, s.read)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_list", Description: "List notes, optionally under one folder, with titles and last-modified times."}, s.list)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_backlinks", Description: "List the notes that link to a note with [[wikilinks]]."}, s.backlinks)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_write", Description: "Create a note, or replace a whole note. To replace, pass the version from vault_read; omit version to create. Prefer vault_edit or vault_append for small changes."}, s.write)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_append", Description: "Add text to the end of a note on a new line, creating the note if it doesn't exist."}, s.append)
-	mcp.AddTool(srv, &mcp.Tool{Name: "vault_edit", Description: "Replace one exact passage of a note. old_text must appear exactly once. Pass the version from vault_read; if the note changed since, read it again and retry."}, s.edit)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolSearch, Description: "Search the Memory Vault. Every word must appear in a note's title, path or text; title matches rank first. Returns note IDs, titles and snippets."}, s.search)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolRead, Description: "Read one note: its Markdown, parsed properties, the notes it links to, and its version. Pass the version back when you change the note."}, s.read)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolList, Description: "List notes, optionally under one folder, with titles and last-modified times."}, s.list)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolBacklinks, Description: "List the notes that link to a note with [[wikilinks]]."}, s.backlinks)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolWrite, Description: "Create a note, or replace a whole note. To replace, pass the version from vault_read; omit version to create. Prefer vault_edit or vault_append for small changes."}, s.write)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolAppend, Description: "Add text to the end of a note on a new line, creating the note if it doesn't exist."}, s.append)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolEdit, Description: "Replace one exact passage of a note. old_text must appear exactly once. Pass the version from vault_read; if the note changed since, read it again and retry."}, s.edit)
 	return srv
 }
 
 func (s *server) record(tool string, e audit.Entry, err error) {
-	e.Actor, e.Tool, e.Outcome = s.actor, tool, vault.OutcomeOf(err)
-	if lerr := s.log.Record(e); lerr != nil {
+	if lerr := s.log.Call(s.actor, tool, e, vault.OutcomeOf(err)); lerr != nil {
 		fmt.Fprintln(os.Stderr, "brainvault: cannot write the audit log:", lerr)
 	}
 }
 
-// savedID is the stored ID after a successful change, or the ID the caller asked for.
-func savedID(saved vault.Saved, asked string) string {
-	if saved.ID != "" {
-		return saved.ID
-	}
-	return asked
-}
-
 func (s *server) search(_ context.Context, _ *mcp.CallToolRequest, in SearchIn) (*mcp.CallToolResult, SearchOut, error) {
 	matches, err := s.vault.Search(in.Query, in.Folder, in.Limit)
-	ids := make([]string, 0, len(matches))
-	for _, m := range matches {
-		ids = append(ids, m.ID)
-	}
-	s.record("vault_search", audit.Entry{Query: in.Query, Folder: in.Folder, Results: ids}, err)
+	s.record(audit.ToolSearch, audit.Entry{Query: in.Query, Folder: in.Folder, Results: vault.MatchIDs(matches)}, err)
 	if err != nil {
 		return nil, SearchOut{}, err
 	}
@@ -108,11 +95,7 @@ func (s *server) search(_ context.Context, _ *mcp.CallToolRequest, in SearchIn) 
 
 func (s *server) read(_ context.Context, _ *mcp.CallToolRequest, in IDIn) (*mcp.CallToolResult, vault.Note, error) {
 	note, err := s.vault.Read(in.ID)
-	id := note.ID
-	if id == "" {
-		id = in.ID
-	}
-	s.record("vault_read", audit.Entry{ID: id}, err)
+	s.record(audit.ToolRead, audit.Entry{ID: note.IDOr(in.ID)}, err)
 	if err != nil {
 		return nil, vault.Note{}, err
 	}
@@ -122,7 +105,7 @@ func (s *server) read(_ context.Context, _ *mcp.CallToolRequest, in IDIn) (*mcp.
 func (s *server) list(_ context.Context, _ *mcp.CallToolRequest, in ListIn) (*mcp.CallToolResult, ListOut, error) {
 	recursive := in.Recursive == nil || *in.Recursive
 	notes, err := s.vault.List(in.Folder, recursive)
-	s.record("vault_list", audit.Entry{Folder: in.Folder}, err)
+	s.record(audit.ToolList, audit.Entry{Folder: in.Folder}, err)
 	if err != nil {
 		return nil, ListOut{}, err
 	}
@@ -131,7 +114,7 @@ func (s *server) list(_ context.Context, _ *mcp.CallToolRequest, in ListIn) (*mc
 
 func (s *server) backlinks(_ context.Context, _ *mcp.CallToolRequest, in IDIn) (*mcp.CallToolResult, BacklinksOut, error) {
 	ids, err := s.vault.Backlinks(in.ID)
-	s.record("vault_backlinks", audit.Entry{ID: in.ID}, err)
+	s.record(audit.ToolBacklinks, audit.Entry{ID: in.ID}, err)
 	if err != nil {
 		return nil, BacklinksOut{}, err
 	}
@@ -140,7 +123,7 @@ func (s *server) backlinks(_ context.Context, _ *mcp.CallToolRequest, in IDIn) (
 
 func (s *server) write(_ context.Context, _ *mcp.CallToolRequest, in WriteIn) (*mcp.CallToolResult, vault.Saved, error) {
 	saved, err := s.vault.Write(in.ID, in.Content, in.Version)
-	s.record("vault_write", audit.Entry{ID: savedID(saved, in.ID)}, err)
+	s.record(audit.ToolWrite, audit.Entry{ID: saved.IDOr(in.ID)}, err)
 	if err != nil {
 		return nil, vault.Saved{}, err
 	}
@@ -149,7 +132,7 @@ func (s *server) write(_ context.Context, _ *mcp.CallToolRequest, in WriteIn) (*
 
 func (s *server) append(_ context.Context, _ *mcp.CallToolRequest, in AppendIn) (*mcp.CallToolResult, vault.Saved, error) {
 	saved, err := s.vault.Append(in.ID, in.Text, in.Version)
-	s.record("vault_append", audit.Entry{ID: savedID(saved, in.ID)}, err)
+	s.record(audit.ToolAppend, audit.Entry{ID: saved.IDOr(in.ID)}, err)
 	if err != nil {
 		return nil, vault.Saved{}, err
 	}
@@ -158,7 +141,7 @@ func (s *server) append(_ context.Context, _ *mcp.CallToolRequest, in AppendIn) 
 
 func (s *server) edit(_ context.Context, _ *mcp.CallToolRequest, in EditIn) (*mcp.CallToolResult, vault.Saved, error) {
 	saved, err := s.vault.Edit(in.ID, in.OldText, in.NewText, in.Version)
-	s.record("vault_edit", audit.Entry{ID: savedID(saved, in.ID)}, err)
+	s.record(audit.ToolEdit, audit.Entry{ID: saved.IDOr(in.ID)}, err)
 	if err != nil {
 		return nil, vault.Saved{}, err
 	}

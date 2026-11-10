@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+// Tool names as they appear in the log; the MCP tools and the CLI commands share them.
+const (
+	ToolSearch    = "vault_search"
+	ToolRead      = "vault_read"
+	ToolList      = "vault_list"
+	ToolBacklinks = "vault_backlinks"
+	ToolWrite     = "vault_write"
+	ToolAppend    = "vault_append"
+	ToolEdit      = "vault_edit"
+)
+
 // Entry is one logged call.
 type Entry struct {
 	Time    string   `json:"time"`
@@ -36,6 +47,13 @@ func New(vaultRoot string) *Log {
 
 // Path is the audit file's location.
 func (l *Log) Path() string { return l.path }
+
+// Call records one tool call: it sets the entry's Actor, Tool and Outcome, then appends it.
+// Callers pass the outcome code, such as vault.OutcomeOf(err).
+func (l *Log) Call(actor, tool string, e Entry, outcome string) error {
+	e.Actor, e.Tool, e.Outcome = actor, tool, outcome
+	return l.Record(e)
+}
 
 // Record appends one entry, filling in Time when it is empty.
 func (l *Log) Record(e Entry) error {

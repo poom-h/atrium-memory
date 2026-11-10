@@ -42,3 +42,33 @@ func TestRecordAppendsJSONLines(t *testing.T) {
 		t.Fatalf("empty fields should be omitted: %s", lines[0])
 	}
 }
+
+func TestCallSetsActorToolAndOutcome(t *testing.T) {
+	l := New(t.TempDir())
+	if err := l.Call("atlas", ToolRead, Entry{ID: "Home.md", Actor: "ignored", Tool: "ignored"}, "stale_version"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(l.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var e Entry
+	if err := json.Unmarshal(data, &e); err != nil {
+		t.Fatal(err)
+	}
+	if e.Actor != "atlas" || e.Tool != "vault_read" || e.Outcome != "stale_version" || e.ID != "Home.md" {
+		t.Fatalf("entry = %+v", e)
+	}
+}
+
+func TestToolNames(t *testing.T) {
+	want := map[string]string{
+		ToolSearch: "vault_search", ToolRead: "vault_read", ToolList: "vault_list", ToolBacklinks: "vault_backlinks",
+		ToolWrite: "vault_write", ToolAppend: "vault_append", ToolEdit: "vault_edit",
+	}
+	for got, name := range want {
+		if got != name {
+			t.Errorf("tool constant %q, want %q", got, name)
+		}
+	}
+}
