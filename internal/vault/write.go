@@ -194,7 +194,10 @@ func writeAtomic(t target, data []byte, mode fs.FileMode, create bool) (Saved, e
 		if err := publishNew(name, t, data, mode); err != nil {
 			return Saved{}, err
 		}
-	} else if err := os.Rename(name, t.Abs); err != nil {
+	} else if err := replaceFile(name, t.Abs); err != nil {
+		if isBusy(err) {
+			return Saved{}, errorf(Locked, "the note is open in another program; retry shortly")
+		}
 		return Saved{}, err
 	}
 	return Saved{ID: t.ID, Version: versionOf(data)}, nil
