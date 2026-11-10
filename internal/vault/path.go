@@ -34,6 +34,9 @@ func Open(dir string) (*Vault, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("vault folder %s is not a folder", dir)
 	}
+	if _, err := os.ReadDir(real); err != nil {
+		return nil, fmt.Errorf("vault folder %s cannot be read: %w", dir, cause(err))
+	}
 	return &Vault{Root: real}, nil
 }
 

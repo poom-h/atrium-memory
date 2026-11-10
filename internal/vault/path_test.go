@@ -3,6 +3,7 @@ package vault
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -80,5 +81,19 @@ func TestResolveMatchesUnicodeNormalisation(t *testing.T) {
 	}
 	if !got.Exists || got.ID != "Notes/Caf\u00e9.md" {
 		t.Fatalf("got %+v, want existing note with NFC ID", got)
+	}
+}
+
+func TestOpenFailsOnUnreadableVault(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("folder modes don't restrict reading here")
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+	if _, err := Open(dir); err == nil {
+		t.Fatal("Open succeeded on an unreadable vault")
 	}
 }

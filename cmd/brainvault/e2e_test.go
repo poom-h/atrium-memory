@@ -224,3 +224,45 @@ func TestStartupFailsWithoutVault(t *testing.T) {
 		t.Fatalf("stderr = %q, want it to mention BRAINVAULT_PATH", stderr.String())
 	}
 }
+
+func TestStartupFailsOnUnreadableVault(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("folder modes don't restrict reading here")
+	}
+	dir := makeVault(t, map[string]string{"Home.md": "# Home\n"})
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+	cmd := exec.Command(binary, "mcp")
+	cmd.Env = cleanEnv("BRAINVAULT_PATH=" + dir)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() == 0 {
+		t.Fatalf("want a non-zero exit, got %v", err)
+	}
+	if !strings.Contains(stderr.String(), "vault") {
+		t.Fatalf("stderr = %q, want it to mention the vault", stderr.String())
+	}
+}
+
+// Closing the client's side of the connection is a normal end for the server: exit code 0.
+func TestCleanShutdownExitsZero(t *testing.T) {
+	dir := makeVault(t, map[string]string{"Home.md": "# Home\n"})
+	cmd := exec.Command(binary, "mcp")
+	cmd.Env = cleanEnv("BRAINVAULT_PATH="+dir, "BRAINVAULT_ACTOR=e2e")
+	client := mcp.NewClient(&mcp.Implementation{Name: "e2e", Version: "test"}, nil)
+	session, err := client.Connect(context.Background(), &mcp.CommandTransport{Command: cmd}, nil)
+	if err != nil {
+		t.Fatalf("connect (initialize): %v", err)
+	}
+	session.Close()
+	if cmd.ProcessState == nil {
+		t.Fatal("the server process was not waited for")
+	}
+	if code := cmd.ProcessState.ExitCode(); code != 0 {
+		t.Fatalf("exit code after a clean shutdown = %d, want 0", code)
+	}
+}
