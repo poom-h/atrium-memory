@@ -146,14 +146,14 @@ func stale(id, current string) *Error {
 func (v *Vault) withLock(fn func() error) error {
 	dir := filepath.Join(v.Root, ".brainvault")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return errorf(Internal, "cannot set up the vault's write lock: %s", cause(err))
 	}
 	l, err := lock.Acquire(filepath.Join(dir, "write.lock"), lockWait)
 	if errors.Is(err, lock.ErrTimeout) {
 		return errorf(Locked, "another writer is holding the vault; retry shortly")
 	}
 	if err != nil {
-		return err
+		return errorf(Internal, "cannot take the vault's write lock: %s", cause(err))
 	}
 	defer l.Release()
 	return fn()
@@ -163,6 +163,15 @@ func (v *Vault) withLock(fn func() error) error {
 // over the note (the caller has checked the version under the lock). A create (create true) must never replace
 // anything: it links the temp file into place, which fails if the note exists.
 func writeAtomic(t target, data []byte, mode fs.FileMode, create bool) (Saved, error) {
+	saved, err := writeFile(t, data, mode, create)
+	var coded *Error
+	if err != nil && !errors.As(err, &coded) {
+		err = errorf(Internal, "cannot save %q: %s", t.ID, cause(err))
+	}
+	return saved, err
+}
+
+func writeFile(t target, data []byte, mode fs.FileMode, create bool) (Saved, error) {
 	dir := filepath.Dir(t.Abs)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return Saved{}, err

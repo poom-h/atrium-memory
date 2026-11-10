@@ -54,7 +54,7 @@ func (v *Vault) Read(id string) (Note, error) {
 func readNote(t target) ([]byte, error) {
 	data, err := os.ReadFile(t.Abs)
 	if err != nil {
-		return nil, err
+		return nil, errorf(Internal, "cannot read %q: %s", t.ID, cause(err))
 	}
 	if !utf8.Valid(data) {
 		return nil, errorf(InvalidNote, "%q is not valid UTF-8 text", t.ID)

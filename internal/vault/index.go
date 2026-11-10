@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"fmt"
 	"io/fs"
 	"path"
 	"path/filepath"
@@ -81,7 +80,7 @@ func (v *Vault) walk() ([]Entry, []unreadable, error) {
 		return nil
 	})
 	if rootErr != nil {
-		return nil, nil, fmt.Errorf("cannot read the vault folder: %w", rootErr)
+		return nil, nil, errorf(Internal, "cannot read the vault folder: %s", cause(rootErr))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	sort.Slice(skipped, func(i, j int) bool { return skipped[i].ID < skipped[j].ID })
