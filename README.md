@@ -76,3 +76,7 @@ Run `brainvault help` for every command.
 go test ./...
 go build ./cmd/brainvault
 ```
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
