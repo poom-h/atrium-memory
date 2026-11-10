@@ -11,7 +11,7 @@ import (
 
 // TestHelperAppend is the second process in TestConcurrentAppendsLoseNothing. It does nothing on its own.
 func TestHelperAppend(t *testing.T) {
-	dir := os.Getenv("BRAINVAULT_HELPER_VAULT")
+	dir := os.Getenv("ATRIUM_MEMORY_HELPER_VAULT")
 	if dir == "" {
 		t.Skip("helper process only")
 	}
@@ -29,7 +29,7 @@ func TestHelperAppend(t *testing.T) {
 func TestConcurrentAppendsLoseNothing(t *testing.T) {
 	v := newVault(t, map[string]string{"Log.md": ""})
 	helper := exec.Command(os.Args[0], "-test.run=^TestHelperAppend$")
-	helper.Env = append(os.Environ(), "BRAINVAULT_HELPER_VAULT="+v.Root)
+	helper.Env = append(os.Environ(), "ATRIUM_MEMORY_HELPER_VAULT="+v.Root)
 	if err := helper.Start(); err != nil {
 		t.Fatal(err)
 	}

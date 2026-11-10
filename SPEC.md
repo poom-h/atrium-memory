@@ -1,11 +1,11 @@
-# brainvault vault format
+# atrium-memory vault format
 
-A vault is a folder of Markdown notes. Any program that follows these rules can read and write a vault safely alongside brainvault and Obsidian.
+A vault is a folder of Markdown notes. Any program that follows these rules can read and write a vault safely alongside atrium-memory and Obsidian.
 
 ## Notes
 
 - A note is a UTF-8 file ending in `.md`, anywhere under the vault folder.
-- Files and folders whose names start with `.` are not notes. They are never listed, searched or written. (`.obsidian/`, `.brainvault/` and `.tools/` are examples.)
+- Files and folders whose names start with `.` are not notes. They are never listed, searched or written. (`.obsidian/`, `.atrium-memory/` and `.tools/` are examples.)
 - A note's **ID** is its path relative to the vault folder, with `/` between parts on every OS and Unicode NFC normalisation, for example `Notes/LangGraph basics.md`.
 - IDs match existing files ignoring case and Unicode normalisation. Two notes whose IDs differ only in case are not allowed.
 - A note's **title** is its file name without `.md`.
@@ -35,8 +35,8 @@ Existing notes keep their line-ending style (CRLF or LF) when changed. New notes
 
 ## Tool files
 
-brainvault keeps its own files in `<vault>/.brainvault/`: `audit.jsonl` (one JSON object per tool call, never including note content) and `write.lock`.
+atrium-memory keeps its own files in `<vault>/.atrium-memory/`: `audit.jsonl` (one JSON object per tool call, never including note content) and `write.lock`.
 
 ## Suggested layout
 
-ClaudeDesk creates `Inbox/`, `Notes/`, `Maps/`, `Assets/`, `Archive/` and `Home.md`. brainvault accepts any layout.
+ClaudeDesk creates `Inbox/`, `Notes/`, `Maps/`, `Assets/`, `Archive/` and `Home.md`. atrium-memory accepts any layout.

@@ -1,21 +1,21 @@
-# brainvault
+# atrium-memory
 
-The Memory Vault as a tool. `brainvault` serves a folder of Markdown notes (an Obsidian-style vault) to AI agents as MCP tools, and has a command line over the same core: `search`, `read`, `list`, `backlinks`, `write` and `doctor`. It runs on macOS, Windows and Linux as a single binary.
+The Memory Vault as a tool. `atrium-memory` serves a folder of Markdown notes (an Obsidian-style vault) to AI agents as MCP tools, and has a command line over the same core: `search`, `read`, `list`, `backlinks`, `write` and `doctor`. It runs on macOS, Windows and Linux as a single binary.
 
 ## Install
 
-Download the archive for your OS from the GitHub Releases page, unpack it, and put `brainvault` on your PATH.
+Download the archive for your OS from the GitHub Releases page, unpack it, and put `atrium-memory` on your PATH.
 
 Until releases are notarised, macOS may block a downloaded binary. Clear the quarantine flag once:
 
 ```sh
-xattr -d com.apple.quarantine brainvault
+xattr -d com.apple.quarantine atrium-memory
 ```
 
 Or, with Go installed:
 
 ```sh
-go install github.com/poom-h/brainvault/cmd/brainvault@latest
+go install github.com/poom-h/atrium-memory/cmd/atrium-memory@latest
 ```
 
 ## Tools
@@ -30,7 +30,7 @@ go install github.com/poom-h/brainvault/cmd/brainvault@latest
 | `vault_append` | Add text to the end of a note |
 | `vault_edit` | Replace one exact passage (pass its version) |
 
-Changes are confined to the vault, rejected if the note changed since it was read (`stale_version`), written atomically under a lock, and logged to `<vault>/.brainvault/audit.jsonl` without note content. The format is described in [SPEC.md](SPEC.md).
+Changes are confined to the vault, rejected if the note changed since it was read (`stale_version`), written atomically under a lock, and logged to `<vault>/.atrium-memory/audit.jsonl` without note content. The format is described in [SPEC.md](SPEC.md).
 
 ## Use it from an MCP client
 
@@ -39,29 +39,29 @@ Add this to the client's MCP configuration (for Claude Code, a project's `.mcp.j
 ```json
 {
   "mcpServers": {
-    "brainvault": {
-      "command": "/path/to/brainvault",
+    "atrium-memory": {
+      "command": "/path/to/atrium-memory",
       "args": ["mcp"],
       "env": {
-        "BRAINVAULT_PATH": "/path/to/your/vault",
-        "BRAINVAULT_ACTOR": "my-agent"
+        "ATRIUM_MEMORY_PATH": "/path/to/your/vault",
+        "ATRIUM_MEMORY_ACTOR": "my-agent"
       }
     }
   }
 }
 ```
 
-`BRAINVAULT_ACTOR` names the caller in the audit log.
+`ATRIUM_MEMORY_ACTOR` names the caller in the audit log.
 
 ## Command line
 
 ```sh
-brainvault search --vault ~/Vault "langgraph agents"
-brainvault read --vault ~/Vault "Notes/LangGraph basics.md"
-brainvault doctor --vault ~/Vault
+atrium-memory search --vault ~/Vault "langgraph agents"
+atrium-memory read --vault ~/Vault "Notes/LangGraph basics.md"
+atrium-memory doctor --vault ~/Vault
 ```
 
-Run `brainvault help` for every command.
+Run `atrium-memory help` for every command.
 
 ## Limits
 
@@ -74,7 +74,7 @@ Run `brainvault help` for every command.
 
 ```sh
 go test ./...
-go build ./cmd/brainvault
+go build ./cmd/atrium-memory
 ```
 
 ## Licence

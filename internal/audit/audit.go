@@ -1,4 +1,4 @@
-// Package audit appends one JSON line per tool call to <vault>/.brainvault/audit.jsonl.
+// Package audit appends one JSON line per tool call to <vault>/.atrium-memory/audit.jsonl.
 // Entries never contain note content.
 package audit
 
@@ -42,7 +42,7 @@ type Log struct {
 
 // New returns the log for the vault rooted at vaultRoot.
 func New(vaultRoot string) *Log {
-	return &Log{path: filepath.Join(vaultRoot, ".brainvault", "audit.jsonl"), now: time.Now}
+	return &Log{path: filepath.Join(vaultRoot, ".atrium-memory", "audit.jsonl"), now: time.Now}
 }
 
 // Path is the audit file's location.

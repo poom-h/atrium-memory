@@ -8,8 +8,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/poom-h/brainvault/internal/audit"
-	"github.com/poom-h/brainvault/internal/vault"
+	"github.com/poom-h/atrium-memory/internal/audit"
+	"github.com/poom-h/atrium-memory/internal/vault"
 )
 
 type SearchIn struct {
@@ -67,7 +67,7 @@ type server struct {
 // New returns an MCP server with the seven vault tools.
 func New(v *vault.Vault, log *audit.Log, actor, version string) *mcp.Server {
 	s := &server{vault: v, log: log, actor: actor}
-	srv := mcp.NewServer(&mcp.Implementation{Name: "brainvault", Version: version}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "atrium-memory", Version: version}, nil)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolSearch, Description: "Search the Memory Vault. Every word must appear in a note's title, path or text; title matches rank first. Returns note IDs, titles and snippets."}, s.search)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolRead, Description: "Read one note: its Markdown, parsed properties, the notes it links to, and its version. Pass the version back when you change the note."}, s.read)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolList, Description: "List notes, optionally under one folder, with titles and last-modified times. Set recursive to false to leave out notes in subfolders (default true)."}, s.list)
@@ -80,7 +80,7 @@ func New(v *vault.Vault, log *audit.Log, actor, version string) *mcp.Server {
 
 func (s *server) record(tool string, e audit.Entry, err error) {
 	if lerr := s.log.Call(s.actor, tool, e, vault.OutcomeOf(err)); lerr != nil {
-		fmt.Fprintln(os.Stderr, "brainvault: cannot write the audit log:", lerr)
+		fmt.Fprintln(os.Stderr, "atrium-memory: cannot write the audit log:", lerr)
 	}
 }
 

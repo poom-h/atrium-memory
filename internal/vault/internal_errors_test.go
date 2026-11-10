@@ -62,8 +62,8 @@ func TestWriteFailureIsInternalWithoutAbsolutePath(t *testing.T) {
 
 func TestLockSetupFailureIsInternalWithoutAbsolutePath(t *testing.T) {
 	v := newVault(t, map[string]string{"Home.md": "# Home\n"})
-	// A file where the .brainvault folder should be.
-	if err := os.WriteFile(filepath.Join(v.Root, ".brainvault"), []byte("x"), 0o644); err != nil {
+	// A file where the .atrium-memory folder should be.
+	if err := os.WriteFile(filepath.Join(v.Root, ".atrium-memory"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := v.Write("New.md", "x", "")

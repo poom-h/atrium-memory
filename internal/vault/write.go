@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/poom-h/brainvault/internal/lock"
+	"github.com/poom-h/atrium-memory/internal/lock"
 )
 
 // lockWait is how long a write waits for the vault lock; tests shorten it.
@@ -144,7 +144,7 @@ func stale(id, current string) *Error {
 
 // withLock runs fn while holding the vault's write lock.
 func (v *Vault) withLock(fn func() error) error {
-	dir := filepath.Join(v.Root, ".brainvault")
+	dir := filepath.Join(v.Root, ".atrium-memory")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return errorf(Internal, "cannot set up the vault's write lock: %s", cause(err))
 	}
@@ -176,7 +176,7 @@ func writeFile(t target, data []byte, mode fs.FileMode, create bool) (Saved, err
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return Saved{}, err
 	}
-	tmp, err := os.CreateTemp(dir, ".brainvault-*.tmp")
+	tmp, err := os.CreateTemp(dir, ".atrium-memory-*.tmp")
 	if err != nil {
 		return Saved{}, err
 	}

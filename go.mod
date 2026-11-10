@@ -1,4 +1,4 @@
-module github.com/poom-h/brainvault
+module github.com/poom-h/atrium-memory
 
 go 1.27.3
 
