@@ -175,18 +175,38 @@ func TestToolsOverStdio(t *testing.T) {
 		t.Fatalf("read outside the vault: got %q", errText)
 	}
 
-	data, err := os.ReadFile(filepath.Join(dir, ".brainvault", "audit.jsonl"))
-	if err != nil {
-		t.Fatal(err)
+	lines, entries := readAudit(t, dir)
+	find := func(tool, outcome string) map[string]any {
+		for _, e := range entries {
+			if e["actor"] == "e2e" && e["tool"] == tool && e["outcome"] == outcome {
+				return e
+			}
+		}
+		return nil
 	}
-	log := string(data)
-	for _, want := range []string{`"actor":"e2e"`, `"tool":"vault_edit"`, `"outcome":"stale_version"`, `"tool":"vault_search"`, `"results":["Notes/Alpha.md"]`} {
-		if !strings.Contains(log, want) {
-			t.Errorf("audit log is missing %s", want)
+	if e := find("vault_edit", "stale_version"); e == nil || e["id"] != "Notes/Alpha.md" {
+		t.Errorf("no stale vault_edit entry for Notes/Alpha.md in %v", lines)
+	}
+	if e := find("vault_edit", "ok"); e == nil || e["id"] != "Notes/Alpha.md" {
+		t.Errorf("no successful vault_edit entry for Notes/Alpha.md in %v", lines)
+	}
+	if e := find("vault_search", "ok"); e == nil {
+		t.Errorf("no vault_search entry in %v", lines)
+	} else if res, _ := e["results"].([]any); len(res) != 1 || res[0] != "Notes/Alpha.md" || e["query"] != "agents" {
+		t.Errorf("vault_search entry = %v", e)
+	}
+	if e := find("vault_read", "outside_vault"); e == nil || e["id"] != "../outside.md" {
+		t.Errorf("no outside_vault vault_read entry in %v", lines)
+	}
+	for _, tool := range []string{"vault_write", "vault_append", "vault_list", "vault_backlinks"} {
+		if find(tool, "ok") == nil {
+			t.Errorf("no ok %s entry in %v", tool, lines)
 		}
 	}
-	if strings.Contains(log, "About graphs") {
-		t.Error("audit log must not contain note content")
+	for _, line := range lines {
+		if strings.Contains(line, "About graphs") || strings.Contains(line, "More.") {
+			t.Errorf("audit line contains note content: %s", line)
+		}
 	}
 }
 
