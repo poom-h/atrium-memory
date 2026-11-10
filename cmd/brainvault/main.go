@@ -75,6 +75,15 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if err := fs.Parse(rest); err != nil {
 		return 2
 	}
+	switch cmd {
+	case "search", "read", "backlinks", "write":
+		for _, a := range fs.Args() {
+			if strings.HasPrefix(a, "-") {
+				fmt.Fprintf(stderr, "brainvault: %q looks like a flag after the query or note ID; flags must come before it\n", a)
+				return 2
+			}
+		}
+	}
 	if *vaultPath == "" {
 		fmt.Fprintln(stderr, "brainvault: no vault folder; set BRAINVAULT_PATH or pass --vault")
 		return 1

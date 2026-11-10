@@ -143,3 +143,24 @@ func TestCLICallsAreAudited(t *testing.T) {
 		}
 	}
 }
+
+func TestFlagsAfterPositionalArgumentAreRejected(t *testing.T) {
+	dir := makeVault(t, map[string]string{"Alpha.md": "about graphs\n"})
+	cases := [][]string{
+		{"search", "--vault", dir, "graphs", "--folder", "Notes"},
+		{"search", "--vault", dir, "graphs", "-x"},
+		{"read", "--vault", dir, "Alpha.md", "--actor", "x"},
+		{"backlinks", "--vault", dir, "Alpha.md", "--actor", "x"},
+		{"write", "--vault", dir, "Alpha.md", "--version", "v1"},
+	}
+	for _, args := range cases {
+		code, out, errOut := runCLI(t, "body", args...)
+		if code != 2 || out != "" || !strings.Contains(errOut, "flags must come before") {
+			t.Errorf("%v: code %d out %q err %q, want exit 2 and a flags-before message", args, code, out, errOut)
+		}
+	}
+	// Flags before the ID still work.
+	if code, _, errOut := runCLI(t, "", "read", "--vault", dir, "Alpha.md"); code != 0 {
+		t.Fatalf("plain read: code %d err %q", code, errOut)
+	}
+}
