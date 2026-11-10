@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"fmt"
 	"io/fs"
 	"path"
 	"path/filepath"
@@ -19,12 +20,39 @@ type Entry struct {
 	abs      string
 }
 
-// notes walks the vault and returns every note, sorted by ID. Hidden entries and symlinks are skipped.
+// unreadable is a vault path the walk couldn't read.
+type unreadable struct {
+	ID  string // vault-relative, forward slashes
+	Err error
+}
+
+// notes walks the vault and returns every note, sorted by ID. Hidden entries and symlinks are skipped,
+// and so is anything that can't be read; only an unreadable vault root is an error.
 func (v *Vault) notes() ([]Entry, error) {
+	out, _, err := v.walk()
+	return out, err
+}
+
+// walk is notes plus the vault paths it couldn't read, sorted by path. Check reports those.
+func (v *Vault) walk() ([]Entry, []unreadable, error) {
 	out := []Entry{}
-	err := filepath.WalkDir(v.Root, func(p string, d fs.DirEntry, err error) error {
+	var skipped []unreadable
+	var rootErr error
+	skip := func(p string, err error) {
+		rel, rerr := filepath.Rel(v.Root, p)
+		if rerr != nil {
+			rel = p
+		}
+		skipped = append(skipped, unreadable{ID: norm.NFC.String(filepath.ToSlash(rel)), Err: err})
+	}
+	_ = filepath.WalkDir(v.Root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil // skip parts we can't read
+			if p == v.Root {
+				rootErr = err
+				return filepath.SkipAll
+			}
+			skip(p, err)
+			return nil
 		}
 		if p == v.Root {
 			return nil
@@ -40,18 +68,24 @@ func (v *Vault) notes() ([]Entry, error) {
 		}
 		info, err := d.Info()
 		if err != nil {
+			skip(p, err)
 			return nil
 		}
 		rel, err := filepath.Rel(v.Root, p)
 		if err != nil {
+			skip(p, err)
 			return nil
 		}
 		id := norm.NFC.String(filepath.ToSlash(rel))
 		out = append(out, Entry{ID: id, Title: titleOf(id), Modified: info.ModTime().UTC().Format(time.RFC3339), abs: p})
 		return nil
 	})
+	if rootErr != nil {
+		return nil, nil, fmt.Errorf("cannot read the vault folder: %w", rootErr)
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out, err
+	sort.Slice(skipped, func(i, j int) bool { return skipped[i].ID < skipped[j].ID })
+	return out, skipped, nil
 }
 
 // List returns the notes under folder ("" for the whole vault). With recursive false, only notes directly in it.

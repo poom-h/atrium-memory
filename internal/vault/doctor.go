@@ -17,14 +17,17 @@ type Report struct {
 	Warnings []string `json:"warnings"` // allowed, but probably not intended
 }
 
-// Check validates every note: readable, UTF-8, a properties block that parses, links that resolve, unique names.
+// Check validates every note: readable (and reports every note or folder it can't read), UTF-8, a properties block that parses, links that resolve, unique names.
 func (v *Vault) Check() (Report, error) {
-	entries, err := v.notes()
+	entries, skipped, err := v.walk()
 	if err != nil {
 		return Report{}, err
 	}
 	li := newLinkIndex(entries)
 	r := Report{Notes: len(entries), Errors: []string{}, Warnings: []string{}}
+	for _, u := range skipped {
+		r.Errors = append(r.Errors, fmt.Sprintf("%s: cannot read: %v", u.ID, u.Err))
+	}
 	for _, e := range entries {
 		data, err := os.ReadFile(e.abs)
 		if err != nil {
