@@ -38,7 +38,7 @@ func (v *Vault) Write(id, content, version string) (Saved, error) {
 			if version != "" {
 				return errorf(NotFound, "no note %q to replace; omit version to create it", id)
 			}
-			saved, err = writeAtomic(t, []byte(toLF(content)), 0o644)
+			saved, err = writeAtomic(t, []byte(toLF(content)), 0o644, true)
 			return err
 		}
 		old, err := readNote(t)
@@ -52,7 +52,7 @@ func (v *Vault) Write(id, content, version string) (Saved, error) {
 		if version != current {
 			return stale(t.ID, current)
 		}
-		saved, err = writeAtomic(t, []byte(withEOL(content, dominantEOL(old))), modeOf(t.Abs))
+		saved, err = writeAtomic(t, []byte(withEOL(content, dominantEOL(old))), modeOf(t.Abs), false)
 		return err
 	})
 	return saved, err
@@ -73,7 +73,7 @@ func (v *Vault) Append(id, text, version string) (Saved, error) {
 			if version != "" {
 				return errorf(NotFound, "no note %q; omit version to create it", id)
 			}
-			saved, err = writeAtomic(t, []byte(ensureNewline(toLF(text))), 0o644)
+			saved, err = writeAtomic(t, []byte(ensureNewline(toLF(text))), 0o644, true)
 			return err
 		}
 		old, err := readNote(t)
@@ -89,7 +89,7 @@ func (v *Vault) Append(id, text, version string) (Saved, error) {
 			out = append(out[:len(out):len(out)], eol...)
 		}
 		out = append(out, withEOL(ensureNewline(toLF(text)), eol)...)
-		saved, err = writeAtomic(t, out, modeOf(t.Abs))
+		saved, err = writeAtomic(t, out, modeOf(t.Abs), false)
 		return err
 	})
 	return saved, err
@@ -132,7 +132,7 @@ func (v *Vault) Edit(id, oldText, newText, version string) (Saved, error) {
 			return errorf(AmbiguousMatch, "old_text appears %d times in %q; include more surrounding text so it appears once", n, t.ID)
 		}
 		s = strings.Replace(s, find, replace, 1)
-		saved, err = writeAtomic(t, []byte(s), modeOf(t.Abs))
+		saved, err = writeAtomic(t, []byte(s), modeOf(t.Abs), false)
 		return err
 	})
 	return saved, err
@@ -159,8 +159,10 @@ func (v *Vault) withLock(fn func() error) error {
 	return fn()
 }
 
-// writeAtomic writes data to a temp file beside the note, then renames it over the note.
-func writeAtomic(t target, data []byte, mode fs.FileMode) (Saved, error) {
+// writeAtomic writes data to a temp file beside the note, then publishes it. A replace renames the temp file
+// over the note (the caller has checked the version under the lock). A create (create true) must never replace
+// anything: it links the temp file into place, which fails if the note exists.
+func writeAtomic(t target, data []byte, mode fs.FileMode, create bool) (Saved, error) {
 	dir := filepath.Dir(t.Abs)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return Saved{}, err
@@ -185,10 +187,58 @@ func writeAtomic(t target, data []byte, mode fs.FileMode) (Saved, error) {
 	if err := os.Chmod(name, mode); err != nil {
 		return Saved{}, err
 	}
-	if err := os.Rename(name, t.Abs); err != nil {
+	if beforePublish != nil {
+		beforePublish()
+	}
+	if create {
+		if err := publishNew(name, t, data, mode); err != nil {
+			return Saved{}, err
+		}
+	} else if err := os.Rename(name, t.Abs); err != nil {
 		return Saved{}, err
 	}
 	return Saved{ID: t.ID, Version: versionOf(data)}, nil
+}
+
+// publishNew puts the finished temp file at t.Abs only if nothing is there. It hard-links the temp file, which
+// is atomic and exclusive; where the file system has no hard links it falls back to an exclusive create
+// (O_EXCL) that writes the bytes in place. The caller removes the temp file.
+func publishNew(tmp string, t target, data []byte, mode fs.FileMode) error {
+	err := os.Link(tmp, t.Abs)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, fs.ErrExist) {
+		return existsError(t)
+	}
+	f, err := os.OpenFile(t.Abs, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	if errors.Is(err, fs.ErrExist) {
+		return existsError(t)
+	}
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(t.Abs)
+		return err
+	}
+	return os.Chmod(t.Abs, mode)
+}
+
+// existsError is the exists error for a note that appeared while a create was under way.
+func existsError(t target) *Error {
+	e := &Error{Code: Exists, Message: fmt.Sprintf("%q already exists; read it and pass its version to replace it", t.ID)}
+	if data, err := os.ReadFile(t.Abs); err == nil && utf8.Valid(data) {
+		e.CurrentVersion = versionOf(data)
+	}
+	return e
 }
 
 func modeOf(abs string) fs.FileMode {
@@ -263,3 +313,6 @@ func ensureNewline(s string) string {
 	}
 	return s + "\n"
 }
+
+// beforePublish, when set (tests only), runs just before a new note is published.
+var beforePublish func()

@@ -1,7 +1,9 @@
 package vault
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -71,7 +73,11 @@ func (v *Vault) resolve(id string) (target, error) {
 	for i, p := range parts {
 		name := p
 		if exists {
-			if found, ok := lookup(abs, p); ok {
+			found, ok, err := lookup(abs, p)
+			if err != nil {
+				return target{}, errorf(Internal, "cannot list the folder %q to look for %q: %s", folderID(idParts[:i]), id, cause(err))
+			}
+			if ok {
 				name = found
 			} else {
 				exists = false
@@ -92,22 +98,48 @@ func (v *Vault) resolve(id string) (target, error) {
 }
 
 // lookup finds the entry of dir called name: exactly after NFC normalisation, or else ignoring case.
-func lookup(dir, name string) (string, bool) {
+// A folder that does not exist means the entry is not there; any other failure to list it is an error,
+// because guessing "not there" could make a create overwrite an existing note.
+func lookup(dir, name string) (string, bool, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return "", false
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, err
 	}
 	for _, e := range entries {
 		if norm.NFC.String(e.Name()) == name {
-			return e.Name(), true
+			return e.Name(), true, nil
 		}
 	}
 	for _, e := range entries {
 		if strings.EqualFold(norm.NFC.String(e.Name()), name) {
-			return e.Name(), true
+			return e.Name(), true, nil
 		}
 	}
-	return "", false
+	return "", false, nil
+}
+
+// folderID is a vault-relative folder for messages; "" is the vault root.
+func folderID(parts []string) string {
+	if len(parts) == 0 {
+		return "."
+	}
+	return strings.Join(parts, "/")
+}
+
+// cause is the reason inside an OS error, without the absolute path it carries.
+func cause(err error) error {
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Err
+	}
+	var le *os.LinkError
+	if errors.As(err, &le) {
+		return le.Err
+	}
+	return err
 }
 
 // checkInside rejects a path whose deepest existing part resolves, through symlinks, outside the vault.
