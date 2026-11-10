@@ -70,18 +70,19 @@ func (li linkIndex) outgoing(text string) []string {
 	return out
 }
 
-// Backlinks returns the notes, other than the note itself, that link to it.
-func (v *Vault) Backlinks(id string) ([]string, error) {
+// Backlinks returns the notes, other than the note itself, that link to it, and the note's ID as stored
+// (empty when the note wasn't found), for the audit log.
+func (v *Vault) Backlinks(id string) (ids []string, resolved string, err error) {
 	t, err := v.resolve(id)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if !t.Exists {
-		return nil, errorf(NotFound, "no note %q", id)
+		return nil, "", errorf(NotFound, "no note %q", id)
 	}
 	entries, err := v.notes()
 	if err != nil {
-		return nil, err
+		return nil, t.ID, err
 	}
 	li := newLinkIndex(entries)
 	out := []string{}
@@ -100,5 +101,5 @@ func (v *Vault) Backlinks(id string) ([]string, error) {
 			}
 		}
 	}
-	return out, nil
+	return out, t.ID, nil
 }

@@ -70,7 +70,7 @@ func New(v *vault.Vault, log *audit.Log, actor, version string) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: "brainvault", Version: version}, nil)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolSearch, Description: "Search the Memory Vault. Every word must appear in a note's title, path or text; title matches rank first. Returns note IDs, titles and snippets."}, s.search)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolRead, Description: "Read one note: its Markdown, parsed properties, the notes it links to, and its version. Pass the version back when you change the note."}, s.read)
-	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolList, Description: "List notes, optionally under one folder, with titles and last-modified times."}, s.list)
+	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolList, Description: "List notes, optionally under one folder, with titles and last-modified times. Set recursive to false to leave out notes in subfolders (default true)."}, s.list)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolBacklinks, Description: "List the notes that link to a note with [[wikilinks]]."}, s.backlinks)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolWrite, Description: "Create a note, or replace a whole note. To replace, pass the version from vault_read; omit version to create. Prefer vault_edit or vault_append for small changes."}, s.write)
 	mcp.AddTool(srv, &mcp.Tool{Name: audit.ToolAppend, Description: "Add text to the end of a note on a new line, creating the note if it doesn't exist."}, s.append)
@@ -113,8 +113,8 @@ func (s *server) list(_ context.Context, _ *mcp.CallToolRequest, in ListIn) (*mc
 }
 
 func (s *server) backlinks(_ context.Context, _ *mcp.CallToolRequest, in IDIn) (*mcp.CallToolResult, BacklinksOut, error) {
-	ids, err := s.vault.Backlinks(in.ID)
-	s.record(audit.ToolBacklinks, audit.Entry{ID: in.ID}, err)
+	ids, resolved, err := s.vault.Backlinks(in.ID)
+	s.record(audit.ToolBacklinks, audit.Entry{ID: vault.IDOr(resolved, in.ID)}, err)
 	if err != nil {
 		return nil, BacklinksOut{}, err
 	}

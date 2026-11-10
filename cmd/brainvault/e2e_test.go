@@ -266,3 +266,30 @@ func TestCleanShutdownExitsZero(t *testing.T) {
 		t.Fatalf("exit code after a clean shutdown = %d, want 0", code)
 	}
 }
+
+func TestMCPBacklinksAuditLogsTheResolvedID(t *testing.T) {
+	dir := makeVault(t, map[string]string{"Home.md": "[[Alpha]]\n", "Notes/Alpha.md": "a\n"})
+	s := connect(t, dir)
+	mustCall(t, s, "vault_backlinks", map[string]any{"id": "notes/alpha.md"})
+	_, entries := readAudit(t, dir)
+	if len(entries) != 1 || entries[0]["id"] != "Notes/Alpha.md" {
+		t.Fatalf("audit = %v, want id Notes/Alpha.md", entries)
+	}
+}
+
+func TestListToolDescribesRecursive(t *testing.T) {
+	s := connect(t, makeVault(t, map[string]string{"Home.md": "x\n"}))
+	tools, err := s.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name == "vault_list" {
+			if !strings.Contains(tool.Description, "recursive") {
+				t.Fatalf("description %q does not mention recursive", tool.Description)
+			}
+			return
+		}
+	}
+	t.Fatal("no vault_list tool")
+}

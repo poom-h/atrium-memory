@@ -40,13 +40,16 @@ func TestBacklinks(t *testing.T) {
 		"Alpha.md":     "[[Alpha]] links to itself",
 		"Other.md":     "no links",
 	})
-	got, err := v.Backlinks("alpha.md")
+	got, resolved, err := v.Backlinks("alpha.md")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if resolved != "Alpha.md" {
+		t.Fatalf("resolved ID = %q, want Alpha.md", resolved)
 	}
 	if want := []string{"Home.md", "Notes/Map.md"}; !slices.Equal(got, want) {
 		t.Fatalf("backlinks = %v, want %v", got, want)
 	}
-	_, err = v.Backlinks("Nope.md")
+	_, _, err = v.Backlinks("Nope.md")
 	wantCode(t, err, NotFound)
 }

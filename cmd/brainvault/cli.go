@@ -70,8 +70,8 @@ func (c cli) backlinks(args []string) error {
 	if err != nil {
 		return err
 	}
-	ids, err := c.vault.Backlinks(id)
-	c.record(audit.ToolBacklinks, audit.Entry{ID: id}, err)
+	ids, resolved, err := c.vault.Backlinks(id)
+	c.record(audit.ToolBacklinks, audit.Entry{ID: vault.IDOr(resolved, id)}, err)
 	if err != nil {
 		return err
 	}

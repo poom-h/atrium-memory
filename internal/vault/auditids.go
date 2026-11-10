@@ -24,3 +24,11 @@ func (n Note) IDOr(asked string) string {
 	}
 	return asked
 }
+
+// IDOr is a resolved note ID, or asked when resolving failed (resolved is empty).
+func IDOr(resolved, asked string) string {
+	if resolved != "" {
+		return resolved
+	}
+	return asked
+}

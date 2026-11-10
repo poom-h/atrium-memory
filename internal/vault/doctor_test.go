@@ -96,3 +96,42 @@ func TestUnreadableVaultRootIsAnError(t *testing.T) {
 		t.Fatalf("List on an unreadable root = %v, nil; want an error", list)
 	}
 }
+
+func TestCheckReportsIDsThatDifferOnlyInCase(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"Notes/Alpha.md", "Notes/alpha.md"} {
+		p := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"Notes/Alpha.md", "Notes/alpha.md"} {
+		if b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(name))); err != nil || len(b) != 2 {
+			t.Skip("this file system ignores case, so both files can't exist")
+		}
+	}
+	entries, _ := os.ReadDir(filepath.Join(dir, "Notes"))
+	if len(entries) != 2 {
+		t.Skip("this file system ignores case, so both files can't exist")
+	}
+	v, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := v.Check()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range r.Errors {
+		if strings.Contains(e, "differ only in case") && strings.Contains(e, "Notes/Alpha.md") && strings.Contains(e, "Notes/alpha.md") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("errors = %v, want one naming both notes as differing only in case", r.Errors)
+	}
+}

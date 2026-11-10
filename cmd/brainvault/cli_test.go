@@ -164,3 +164,14 @@ func TestFlagsAfterPositionalArgumentAreRejected(t *testing.T) {
 		t.Fatalf("plain read: code %d err %q", code, errOut)
 	}
 }
+
+func TestCLIBacklinksAuditLogsTheResolvedID(t *testing.T) {
+	dir := makeVault(t, map[string]string{"Home.md": "[[Alpha]]\n", "Notes/Alpha.md": "a\n"})
+	if code, _, errOut := runCLI(t, "", "backlinks", "--vault", dir, "notes/alpha.md"); code != 0 {
+		t.Fatalf("code %d: %s", code, errOut)
+	}
+	_, entries := readAudit(t, dir)
+	if len(entries) != 1 || entries[0]["id"] != "Notes/Alpha.md" {
+		t.Fatalf("audit = %v, want id Notes/Alpha.md", entries)
+	}
+}

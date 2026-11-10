@@ -48,6 +48,17 @@ func (v *Vault) Check() (Report, error) {
 			}
 		}
 	}
+	byFold := map[string][]string{}
+	for _, e := range entries {
+		k := strings.ToLower(e.ID)
+		byFold[k] = append(byFold[k], e.ID)
+	}
+	for _, ids := range byFold {
+		if len(ids) > 1 {
+			sort.Strings(ids)
+			r.Errors = append(r.Errors, fmt.Sprintf("notes whose IDs differ only in case: %s; SPEC.md doesn't allow this, so tools can't tell them apart", strings.Join(ids, ", ")))
+		}
+	}
 	for stem, ids := range li.byStem {
 		if len(ids) > 1 {
 			r.Warnings = append(r.Warnings, fmt.Sprintf("notes share the name %q: %s; links by name go to %s", stem, strings.Join(ids, ", "), ids[0]))
