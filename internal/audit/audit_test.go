@@ -20,7 +20,7 @@ func TestRecordAppendsJSONLines(t *testing.T) {
 	if err := l.Record(Entry{Actor: "atlas", Tool: "vault_search", Query: "graph", Results: []string{"A.md"}, Outcome: "ok"}); err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(root, ".brainvault", "audit.jsonl"); l.Path() != want {
+	if want := filepath.Join(root, ".atrium-memory", "audit.jsonl"); l.Path() != want {
 		t.Fatalf("Path() = %s, want %s", l.Path(), want)
 	}
 	data, err := os.ReadFile(l.Path())

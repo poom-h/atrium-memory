@@ -19,12 +19,12 @@ import (
 var binary string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "brainvault-e2e-")
+	dir, err := os.MkdirTemp("", "atrium-memory-e2e-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	binary = filepath.Join(dir, "brainvault")
+	binary = filepath.Join(dir, "atrium-memory")
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
@@ -38,11 +38,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// cleanEnv is this process's environment without BRAINVAULT_ settings, plus extra.
+// cleanEnv is this process's environment without ATRIUM_MEMORY_ settings, plus extra.
 func cleanEnv(extra ...string) []string {
 	var env []string
 	for _, kv := range os.Environ() {
-		if !strings.HasPrefix(kv, "BRAINVAULT_") {
+		if !strings.HasPrefix(kv, "ATRIUM_MEMORY_") {
 			env = append(env, kv)
 		}
 	}
@@ -67,7 +67,7 @@ func makeVault(t *testing.T, files map[string]string) string {
 func connect(t *testing.T, dir string) *mcp.ClientSession {
 	t.Helper()
 	cmd := exec.Command(binary, "mcp")
-	cmd.Env = cleanEnv("BRAINVAULT_PATH="+dir, "BRAINVAULT_ACTOR=e2e")
+	cmd.Env = cleanEnv("ATRIUM_MEMORY_PATH="+dir, "ATRIUM_MEMORY_ACTOR=e2e")
 	client := mcp.NewClient(&mcp.Implementation{Name: "e2e", Version: "test"}, nil)
 	session, err := client.Connect(context.Background(), &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {
@@ -220,8 +220,8 @@ func TestStartupFailsWithoutVault(t *testing.T) {
 	if !errors.As(err, &exit) {
 		t.Fatalf("want a non-zero exit, got %v", err)
 	}
-	if !strings.Contains(stderr.String(), "BRAINVAULT_PATH") {
-		t.Fatalf("stderr = %q, want it to mention BRAINVAULT_PATH", stderr.String())
+	if !strings.Contains(stderr.String(), "ATRIUM_MEMORY_PATH") {
+		t.Fatalf("stderr = %q, want it to mention ATRIUM_MEMORY_PATH", stderr.String())
 	}
 }
 
@@ -235,7 +235,7 @@ func TestStartupFailsOnUnreadableVault(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(dir, 0o755) })
 	cmd := exec.Command(binary, "mcp")
-	cmd.Env = cleanEnv("BRAINVAULT_PATH=" + dir)
+	cmd.Env = cleanEnv("ATRIUM_MEMORY_PATH=" + dir)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	err := cmd.Run()
@@ -252,7 +252,7 @@ func TestStartupFailsOnUnreadableVault(t *testing.T) {
 func TestCleanShutdownExitsZero(t *testing.T) {
 	dir := makeVault(t, map[string]string{"Home.md": "# Home\n"})
 	cmd := exec.Command(binary, "mcp")
-	cmd.Env = cleanEnv("BRAINVAULT_PATH="+dir, "BRAINVAULT_ACTOR=e2e")
+	cmd.Env = cleanEnv("ATRIUM_MEMORY_PATH="+dir, "ATRIUM_MEMORY_ACTOR=e2e")
 	client := mcp.NewClient(&mcp.Implementation{Name: "e2e", Version: "test"}, nil)
 	session, err := client.Connect(context.Background(), &mcp.CommandTransport{Command: cmd}, nil)
 	if err != nil {

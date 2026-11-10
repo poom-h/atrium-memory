@@ -65,7 +65,7 @@ func TestCreateLosesRaceToExternalCreator(t *testing.T) {
 	if b, _ := os.ReadFile(abs); string(b) != "external" {
 		t.Fatalf("external note was replaced: %q", b)
 	}
-	if left, _ := filepath.Glob(filepath.Join(filepath.Dir(abs), ".brainvault-*.tmp")); len(left) != 0 {
+	if left, _ := filepath.Glob(filepath.Join(filepath.Dir(abs), ".atrium-memory-*.tmp")); len(left) != 0 {
 		t.Fatalf("temp files left behind: %v", left)
 	}
 }

@@ -58,8 +58,8 @@ func TestCLIUsageErrors(t *testing.T) {
 	if code, _, errOut := runCLI(t, "", "frobnicate", "--vault", t.TempDir()); code != 2 || !strings.Contains(errOut, "unknown command") {
 		t.Fatalf("unknown command: code %d err %q", code, errOut)
 	}
-	t.Setenv("BRAINVAULT_PATH", "")
-	if code, _, errOut := runCLI(t, "", "read", "Home.md"); code != 1 || !strings.Contains(errOut, "BRAINVAULT_PATH") {
+	t.Setenv("ATRIUM_MEMORY_PATH", "")
+	if code, _, errOut := runCLI(t, "", "read", "Home.md"); code != 1 || !strings.Contains(errOut, "ATRIUM_MEMORY_PATH") {
 		t.Fatalf("missing vault: code %d err %q", code, errOut)
 	}
 }
@@ -67,7 +67,7 @@ func TestCLIUsageErrors(t *testing.T) {
 // readAudit parses every line of the vault's audit log as JSON.
 func readAudit(t *testing.T, dir string) (lines []string, entries []map[string]any) {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(dir, ".brainvault", "audit.jsonl"))
+	data, err := os.ReadFile(filepath.Join(dir, ".atrium-memory", "audit.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}

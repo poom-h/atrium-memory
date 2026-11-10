@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/poom-h/brainvault/internal/lock"
+	"github.com/poom-h/atrium-memory/internal/lock"
 )
 
 const mixed = "one\r\ntwo\nthree\r\nfour\nfive\n"
@@ -86,7 +86,7 @@ func TestWriteReplaceUsesDominantStyle(t *testing.T) {
 
 func TestWriteReportsLockedWhenAnotherWriterHoldsTheVault(t *testing.T) {
 	v := newVault(t, nil)
-	dir := filepath.Join(v.Root, ".brainvault")
+	dir := filepath.Join(v.Root, ".atrium-memory")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

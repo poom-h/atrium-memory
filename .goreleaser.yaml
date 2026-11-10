@@ -1,10 +1,10 @@
 version: 2
-project_name: brainvault
+project_name: atrium-memory
 before:
   hooks:
     - go mod tidy
 builds:
-  - main: ./cmd/brainvault
+  - main: ./cmd/atrium-memory
     env:
       - CGO_ENABLED=0
     goos: [darwin, linux, windows]

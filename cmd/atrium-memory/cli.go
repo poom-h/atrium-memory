@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/poom-h/brainvault/internal/audit"
-	"github.com/poom-h/brainvault/internal/vault"
+	"github.com/poom-h/atrium-memory/internal/audit"
+	"github.com/poom-h/atrium-memory/internal/vault"
 )
 
 // cli runs one command against a vault and prints JSON. Calls are logged like MCP calls.

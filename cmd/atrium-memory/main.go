@@ -1,4 +1,4 @@
-// Command brainvault serves a Markdown vault to agents as MCP tools, and offers the same operations as a CLI.
+// Command atrium-memory serves a Markdown vault to agents as MCP tools, and offers the same operations as a CLI.
 package main
 
 import (
@@ -11,27 +11,27 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/poom-h/brainvault/internal/audit"
-	"github.com/poom-h/brainvault/internal/mcpserver"
-	"github.com/poom-h/brainvault/internal/vault"
+	"github.com/poom-h/atrium-memory/internal/audit"
+	"github.com/poom-h/atrium-memory/internal/mcpserver"
+	"github.com/poom-h/atrium-memory/internal/vault"
 )
 
 // version is set at release time with -ldflags "-X main.version=…".
 var version = "dev"
 
-const usage = `brainvault: the Memory Vault as a tool
+const usage = `atrium-memory: the Memory Vault as a tool
 
 Usage:
-  brainvault mcp                                      run the MCP server over stdio
-  brainvault search [--folder F] [--limit N] QUERY
-  brainvault read ID
-  brainvault list [--folder F] [--flat]
-  brainvault backlinks ID
-  brainvault write [--version V] ID < content
-  brainvault doctor                                   check the vault; exits 1 on errors
-  brainvault version
+  atrium-memory mcp                                      run the MCP server over stdio
+  atrium-memory search [--folder F] [--limit N] QUERY
+  atrium-memory read ID
+  atrium-memory list [--folder F] [--flat]
+  atrium-memory backlinks ID
+  atrium-memory write [--version V] ID < content
+  atrium-memory doctor                                   check the vault; exits 1 on errors
+  atrium-memory version
 
-Every command takes --vault (default $BRAINVAULT_PATH) and --actor (default $BRAINVAULT_ACTOR).
+Every command takes --vault (default $ATRIUM_MEMORY_PATH) and --actor (default $ATRIUM_MEMORY_ACTOR).
 Put flags before the note ID or query.`
 
 var commands = map[string]bool{"mcp": true, "search": true, "read": true, "list": true, "backlinks": true, "write": true, "doctor": true}
@@ -60,14 +60,14 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if !commands[cmd] {
-		fmt.Fprintf(stderr, "brainvault: unknown command %q\n\n%s\n", cmd, usage)
+		fmt.Fprintf(stderr, "atrium-memory: unknown command %q\n\n%s\n", cmd, usage)
 		return 2
 	}
 
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	vaultPath := fs.String("vault", os.Getenv("BRAINVAULT_PATH"), "vault folder (default $BRAINVAULT_PATH)")
-	actor := fs.String("actor", envOr("BRAINVAULT_ACTOR", "unknown"), "caller name recorded in the log (default $BRAINVAULT_ACTOR)")
+	vaultPath := fs.String("vault", os.Getenv("ATRIUM_MEMORY_PATH"), "vault folder (default $ATRIUM_MEMORY_PATH)")
+	actor := fs.String("actor", envOr("ATRIUM_MEMORY_ACTOR", "unknown"), "caller name recorded in the log (default $ATRIUM_MEMORY_ACTOR)")
 	folder := fs.String("folder", "", "limit to this vault folder (search, list)")
 	limit := fs.Int("limit", 20, "maximum results (search)")
 	flat := fs.Bool("flat", false, "only notes directly in the folder (list)")
@@ -79,18 +79,18 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "search", "read", "backlinks", "write":
 		for _, a := range fs.Args() {
 			if strings.HasPrefix(a, "-") {
-				fmt.Fprintf(stderr, "brainvault: %q looks like a flag after the query or note ID; flags must come before it\n", a)
+				fmt.Fprintf(stderr, "atrium-memory: %q looks like a flag after the query or note ID; flags must come before it\n", a)
 				return 2
 			}
 		}
 	}
 	if *vaultPath == "" {
-		fmt.Fprintln(stderr, "brainvault: no vault folder; set BRAINVAULT_PATH or pass --vault")
+		fmt.Fprintln(stderr, "atrium-memory: no vault folder; set ATRIUM_MEMORY_PATH or pass --vault")
 		return 1
 	}
 	v, err := vault.Open(*vaultPath)
 	if err != nil {
-		fmt.Fprintln(stderr, "brainvault:", err)
+		fmt.Fprintln(stderr, "atrium-memory:", err)
 		return 1
 	}
 	log := audit.New(v.Root)
@@ -98,7 +98,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if cmd == "mcp" {
 		srv := mcpserver.New(v, log, *actor, version)
 		if err := srv.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
-			fmt.Fprintln(stderr, "brainvault:", err)
+			fmt.Fprintln(stderr, "atrium-memory:", err)
 			return 1
 		}
 		return 0
@@ -124,7 +124,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 	}
 	if err != nil {
-		fmt.Fprintln(stderr, "brainvault:", err)
+		fmt.Fprintln(stderr, "atrium-memory:", err)
 		return 1
 	}
 	return 0
